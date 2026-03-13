@@ -1,6 +1,6 @@
 # Statcast MCP Server
 
-An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets you query **MLB Statcast data using plain English**. Ask your AI assistant about players, games, stats, leaderboards, and more — no coding required.
+A [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets you query **MLB Statcast data using plain English**. Ask your AI assistant about players, games, stats, leaderboards, and more — no coding required.
 
 Built on [pybaseball](https://github.com/jldbc/pybaseball), this server gives AI assistants direct access to data from **Baseball Savant**, **FanGraphs**, and **Baseball Reference**.
 
