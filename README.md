@@ -13,6 +13,7 @@ Once connected, just talk to your AI assistant naturally:
 - *"Who had the highest exit velocity in 2024?"*
 - *"What were the NL standings at the end of 2023?"*
 - *"Find me the most undervalued hitters — compare xBA to actual BA"*
+- *"Expected stats for the whole Yankees lineup and their five starters"* (use `expected_stats_batch` with comma-separated names)
 - *"Who are the fastest players in baseball right now?"*
 - *"Show me every pitch from the Yankees-Red Sox game on July 4, 2024"*
 
@@ -61,14 +62,27 @@ Here's what a typical exchange looks like when you use the Statcast MCP:
 | `statcast_pitcher` | Every pitch a specific pitcher threw in a date range |
 | `season_batting_stats` | Full-season batting stats from FanGraphs (AVG, OPS, WAR, wRC+, etc.) |
 | `season_pitching_stats` | Full-season pitching stats from FanGraphs (ERA, FIP, K/9, WAR, etc.) |
+| `team_season_batting_stats` | **Team** batting — full roster actual stats (FG, or BRef fallback) |
+| `team_season_pitching_stats` | **Team** pitching — rotation + bullpen actual stats (FG, or BRef fallback) |
 | `statcast_batter_expected_stats` | xBA, xSLG, xwOBA leaderboard — who *deserves* better stats? |
 | `statcast_pitcher_expected_stats` | Expected stats allowed by pitchers |
+| `expected_stats_batch` | Expected stats for **many** batters and/or pitchers in **one** call (lineups, rotations) |
 | `statcast_batter_exitvelo_barrels` | Exit velocity and barrel rate leaders |
 | `statcast_pitcher_exitvelo_barrels` | Exit velocity and barrel rate allowed by pitchers |
 | `statcast_pitcher_pitch_arsenal` | Pitch mix breakdown (% fastball, slider, curve, etc.) |
 | `statcast_pitcher_arsenal_stats` | Performance stats per pitch type (whiff rate, BA against, etc.) |
 | `sprint_speed_leaderboard` | Fastest players in baseball by sprint speed |
 | `team_standings` | Division standings for any season |
+| `batter_percentile_ranks` | Statcast percentile ranks for hitters (exit velo, barrel%, xwOBA, etc.) |
+| `pitcher_percentile_ranks` | Statcast percentile ranks for pitchers (stuff, spin, whiff%, etc.) |
+| `outs_above_average` | Defensive OAA leaderboard by position (SS, CF, `ALL`, etc.) |
+| `outfield_directional_oaa` | Outfield OAA by direction (back/in, L/R) |
+| `batting_stats_date_range` | Batting stats over any date range (Baseball Reference) |
+| `pitching_stats_date_range` | Pitching stats over any date range (Baseball Reference) |
+
+**Team seasons:** Use **`team_season_batting_stats`** / **`team_season_pitching_stats`** with a 3-letter code (`PHI`, `NYY`, …) for a full roster’s **actual** stats (lineup + staff). FanGraphs is tried first; Baseball Reference is used if FG fails or returns nothing.
+
+**Player search:** Nearly every leaderboard/stat tool accepts optional **`player_name`** (e.g. `"Aaron Judge"`) so you get that player’s full rows instead of only the first 50 in the table. For **groups** (full lineup + rotation, “all starters”), use **`expected_stats_batch`** with comma-separated names — the server does **not** pull MLB rosters automatically; list names explicitly or resolve them first (e.g. web / `player_lookup`). Pitch-level tools already take a name via `statcast_batter` / `statcast_pitcher`. `team_standings` is team-only.
 
 ## Quick Start
 
@@ -209,6 +223,12 @@ season_batting_stats(start_season=2024)
 statcast_batter_expected_stats(year=2024)
 ```
 
+> "What are Aaron Judge's expected stats vs actual in 2025?"
+
+```
+statcast_batter_expected_stats(year=2025, player_name="Aaron Judge")
+```
+
 ### Exit Velocity Leaders
 
 > "Who hit the ball hardest in 2024?"
@@ -242,17 +262,41 @@ sprint_speed_leaderboard(year=2024)
 team_standings(season=2024)
 ```
 
+### Percentile ranks & defense
+
+> "What are Aaron Judge's Statcast percentile ranks in 2024?"
+
+```
+batter_percentile_ranks(year=2024, player_name="Aaron Judge")
+```
+
+> "Who were the best defensive shortstops by OAA in 2024?"
+
+```
+outs_above_average(year=2024, position="SS")
+```
+
+### Hot streaks (date ranges)
+
+> "Who hit the best from July 1 to July 31, 2024?"
+
+```
+batting_stats_date_range(start_date="2024-07-01", end_date="2024-07-31")
+```
+
 ## Data Sources
 
 All data is sourced from:
 
 - [**Baseball Savant**](https://baseballsavant.mlb.com/) — Statcast pitch-level and leaderboard data (2008+)
 - [**FanGraphs**](https://www.fangraphs.com/) — Season-level batting and pitching statistics
-- [**Baseball Reference**](https://www.baseball-reference.com/) — Player identification and cross-references
+- [**Baseball Reference**](https://www.baseball-reference.com/) — Player identification, daily stat ranges, and cross-references
 
 ## Reference Guide
 
 For detailed tool-by-tool documentation, row limits, parameters, and usage patterns, see [REFERENCE.md](REFERENCE.md).
+
+**Social / sharing:** Short descriptions and hashtag ideas for posts are in [TOOLS_SUMMARY.md](TOOLS_SUMMARY.md).
 
 ## Notes
 
@@ -277,6 +321,9 @@ statcast-mcp
 
 # Test with the MCP Inspector
 npx @modelcontextprotocol/inspector statcast-mcp
+
+# Smoke-test all 24 tools (needs network; ~2024 fixtures)
+PYTHONPATH=src python scripts/verify_tools.py
 ```
 
 ## Contributing

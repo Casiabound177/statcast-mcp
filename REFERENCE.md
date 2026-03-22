@@ -14,8 +14,11 @@
 | `statcast_pitcher` | **100 rows** | Pitch-level, named pitcher, date range |
 | `season_batting_stats` | **50 rows** | Season aggregates from FanGraphs |
 | `season_pitching_stats` | **50 rows** | Season aggregates from FanGraphs |
+| `team_season_batting_stats` | **200 rows** | Full team roster, FG or BRef |
+| `team_season_pitching_stats` | **200 rows** | Full team staff, FG or BRef |
 | `statcast_batter_expected_stats` | **50 rows** | xBA/xSLG/xwOBA leaderboard |
 | `statcast_pitcher_expected_stats` | **50 rows** | xBA/xSLG/xwOBA/xERA allowed leaderboard |
+| `expected_stats_batch` | **1 row per name** (batters + pitchers) | Multi-player expected stats; **2** Savant fetches total |
 | `statcast_batter_pitch_arsenal` | **All rows** when filtering by player; **50 rows** for full leaderboard | Per-pitch-type batting stats |
 | `statcast_pitcher_pitch_arsenal` | **50 rows** | Pitch velocity mix breakdown |
 | `statcast_pitcher_arsenal_stats` | **50 rows** | Per-pitch-type performance for pitchers |
@@ -23,6 +26,14 @@
 | `statcast_pitcher_exitvelo_barrels` | **50 rows** | Exit velocity / barrel stats allowed |
 | `sprint_speed_leaderboard` | **50 rows** | Sprint speed in ft/sec |
 | `team_standings` | **All 30 teams** (no limit) | Division standings |
+| `batter_percentile_ranks` | **50 rows** (1 row if `player_name` set) | Statcast batter percentiles |
+| `pitcher_percentile_ranks` | **50 rows** (1 row if `player_name` set) | Statcast pitcher percentiles |
+| `outs_above_average` | **50 rows** | OAA by position (`SS`, `CF`, `ALL`, …); not catcher |
+| `outfield_directional_oaa` | **50 rows** | OF OAA by direction |
+| `batting_stats_date_range` | **50 rows** | BRef batting over custom dates |
+| `pitching_stats_date_range` | **50 rows** | BRef pitching over custom dates |
+
+**Player filter:** For most rows above, pass **`player_name`** on the corresponding tool to return only that player’s data (resolved via MLBAM / FanGraphs ID / name columns). For **several** players’ expected stats at once, use **`expected_stats_batch`** (`batters=` / `pitchers=` strings). **`team_season_*`** tools take **`team`** (3-letter code) plus optional **`player_name`**. Tools that do not support `player_name`: `player_lookup`, `statcast_search`, `statcast_batter`, `statcast_pitcher` (already name-based), `team_standings`.
 
 ---
 
@@ -220,8 +231,9 @@
 **Parameters:**
 - `year` (required) — Season year integer
 - `min_plate_appearances` (optional) — Default: 50
+- `player_name` (optional) — If set, returns **only that player’s row** (full Statcast table is fetched server-side, so stars are not cut off by the 50-row display limit).
 
-**Row limit: 50** (observed: 651 players at 50 PA threshold in 2024, returned 50)
+**Row limit: 50** for leaderboard mode; **1 row** (or a few) when `player_name` is set.
 
 **Sorted by:** Plate appearances descending (most PA first).
 
@@ -249,8 +261,9 @@
 **Parameters:**
 - `year` (required) — Season year integer
 - `min_plate_appearances` (optional) — Default: 50
+- `player_name` (optional) — Filter to one pitcher’s row (same as batter expected stats).
 
-**Row limit: 50** (observed: 855 pitchers at 50 PA threshold in 2024, returned 50)
+**Row limit: 50** for leaderboard; **1 row** when `player_name` is set.
 
 **Sorted by:** Plate appearances faced descending.
 
@@ -439,15 +452,122 @@
 
 ---
 
+### 16. `batter_percentile_ranks`
+
+**Purpose:** Statcast percentile ranks (0–100) for qualified hitters — exit velocity, barrel%, xwOBA, chase%, sprint speed, etc.
+
+**Parameters:** `year` (required), `player_name` (optional — one row for that player).
+
+**Row limit:** 50 for full leaderboard; 1 row when filtered.
+
+---
+
+### 17. `pitcher_percentile_ranks`
+
+**Purpose:** Statcast percentile ranks for qualified pitchers — spin, velocity, whiff%, xERA-related metrics, etc.
+
+**Parameters:** `year` (required), `player_name` (optional).
+
+---
+
+### 18. `outs_above_average`
+
+**Purpose:** Outs Above Average (OAA) by fielding position.
+
+**Parameters:**
+- `year` (required)
+- `position` — `SS`, `2B`, `3B`, `1B`, `LF`, `CF`, `RF`, or `ALL` / `all` for all positions in the leaderboard
+- `min_attempts` — `"q"` (qualified) or an integer (default `"q"`)
+
+**Note:** Catcher is **not** supported by Baseball Savant’s OAA leaderboard used here.
+
+---
+
+### 19. `outfield_directional_oaa`
+
+**Purpose:** Outfielders’ OAA split by direction (e.g. back vs in, toward 3B vs 1B lines).
+
+**Parameters:** `year` (required), `min_opportunities` (optional, default `"q"`).
+
+---
+
+### 20. `batting_stats_date_range`
+
+**Purpose:** Aggregated batting stats between two dates (Baseball Reference daily leaders table).
+
+**Parameters:** `start_date`, `end_date` — `YYYY-MM-DD`, year ≥ 2008.
+
+---
+
+### 21. `pitching_stats_date_range`
+
+**Purpose:** Aggregated pitching stats between two dates (Baseball Reference).
+
+**Parameters:** Same as batting date range.
+
+---
+
+### 22. `expected_stats_batch`
+
+**Purpose:** Return Statcast **expected** stats (xBA, xSLG, xwOBA; pitchers also xERA) for **multiple** batters and/or pitchers in a **single** tool call — intended for “whole lineup + rotation”, “Yankees starters”, etc.
+
+**Parameters:**
+- `year` (required)
+- `batters` (optional) — Comma-, semicolon-, or newline-separated names (e.g. `"Aaron Judge, Juan Soto, Giancarlo Stanton"`)
+- `pitchers` (optional) — Same format for pitchers
+- `min_plate_appearances` (optional) — Default: 50 (applies to both leaderboards)
+
+Provide at least one of `batters` or `pitchers`.
+
+**Implementation:** Fetches the full batter expected-stats leaderboard **once** and the full pitcher expected-stats leaderboard **once**, then filters to each requested name (same matching rules as `player_name` elsewhere). Missing or non-qualifying names are listed in **Notes** at the end of each section.
+
+**Roster caveat:** This MCP does **not** query a live 26-man or lineup API. The client must supply current player names (from context, the web, or repeated `player_lookup` calls).
+
+**Calendar caveat:** For the **current** season year (e.g. 2026 in March), Baseball Savant’s expected-stats **leaderboard may be empty** until enough regular-season PA/IP exist (or until the feed is published). If you get zero rows, use **`year` = previous season** for full-season xBA/xSLG/xwOBA, or lower `min_plate_appearances` after games have been played.
+
+---
+
+### 23. `team_season_batting_stats`
+
+**Purpose:** **Actual** full-season batting stats for **every player** on an MLB team (not a league leaderboard). Use for “Phillies lineup”, “all 2025 Yankees hitters”, etc.
+
+**Parameters:**
+- `team` (required) — 3-letter code matching **Baseball Reference** / FanGraphs (e.g. `PHI`, `NYY`, `LAD`, `ARI`).
+- `season` (required) — Year (e.g. `2025`).
+- `min_plate_appearances` (optional) — Default `1`; used only for the FanGraphs request.
+- `player_name` (optional) — Restrict to one batter.
+
+**Row limit: 200** in the MCP output.
+
+**Data path:** Tries **FanGraphs** (`batting_stats(..., team=...)`). If that errors or returns no rows, scrapes **Baseball Reference** (`/teams/{TEAM}/{YEAR}.shtml`) and selects the batting table with the **highest max PA** (avoids picking a postseason-only table).
+
+**Response header** includes `**Source:** FanGraphs` or `**Source:** Baseball Reference`.
+
+---
+
+### 24. `team_season_pitching_stats`
+
+**Purpose:** **Actual** full-season pitching for the **whole staff** (rotation + bullpen).
+
+**Parameters:** Same pattern as §23, with `min_innings` (default `1`) instead of PA.
+
+**Row limit: 200.**
+
+**Data path:** FanGraphs first, then BRef. The pitching table is chosen by **highest max GS** among tables with `Player` / `ERA` / `IP` / `GS` (full-season starters beat small-sample playoff tables).
+
+**Tip:** Sort or filter on **`GS`** in the returned table to separate rotation (many starts) from relievers.
+
+---
+
 ## Practical Usage Patterns
 
 ### Getting complete data when truncated
 
 All tools that return "Showing X of Y total rows" are **truncated at the displayed limit**. There is no pagination parameter. Strategies to work around this:
 
-- **Leaderboards (season stats, expected stats, exit velo):** Increase `min_plate_appearances`, `min_innings`, or `min_batted_ball_events` to reduce the pool until 50 rows covers what you need.
+- **Leaderboards (season stats, expected stats, exit velo):** Increase `min_plate_appearances`, `min_innings`, or `min_batted_ball_events` to reduce the pool until 50 rows covers what you need. For **many** players’ expected stats, use `expected_stats_batch` instead of one call per player.
 - **Pitch-level data (statcast_batter / statcast_pitcher):** Break the date range into smaller chunks (1–3 days each) and make multiple calls.
-- **Season batting/pitching stats:** Filter to specific team or era using FanGraphs ID cross-references, or accept the top-50-by-PA/IP result.
+- **Season batting/pitching stats:** For a **whole team**, use **`team_season_batting_stats`** / **`team_season_pitching_stats`**. For league leaderboards only, use `season_*` and accept the top-50 cap or raise minimum PA/IP.
 
 ### Identifying a player before querying
 
@@ -491,3 +611,5 @@ player_lookup("Shohei Ohtani")  →  key_mlbam: 660271, mlb_played_first: 2018
 2. **Pitch-level tools cap at 100 rows** with no pagination — multi-day queries for active players will be truncated.
 3. **`statcast_pitcher` and `statcast_batter` return no error on bad/inactive player queries** — you get `"No data found"` silently. Always confirm with `player_lookup` first.
 4. **`season_batting_stats` and `season_pitching_stats` have 150+ columns** — responses are extremely large and may trigger token limits in some clients; output may be saved to a file instead of returned inline.
+5. **`expected_stats_batch` does not resolve rosters** — you must list player names. For **actual team-wide season stats**, use **`team_season_batting_stats`** / **`team_season_pitching_stats`** instead.
+6. **FanGraphs may error (e.g. HTTP 500)** — team season tools then use **Baseball Reference**; counts/columns may differ slightly from FG (response marks the source).
